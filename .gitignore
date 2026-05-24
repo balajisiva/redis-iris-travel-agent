@@ -39,3 +39,27 @@ dist/
 .idea/
 .vscode/
 .DS_Store
+
+# Blog and internal documentation (keep local only)
+BLOG_POST.md
+BLOG_POST_SHORT.md
+BLOG_PUBLISHING_CHECKLIST.md
+BLOG_PACKAGE_SUMMARY.md
+BRANDING_UPDATES.md
+OUTPUT_FORMAT_COMPARISON.md
+IRIS_STATUS.md
+README_TEMPLATE.md
+
+# Development documentation (covered in README.md)
+CONTEXT_RETRIEVER_SETUP.md
+CONTEXT_RETRIEVER_SUMMARY.md
+INTEGRATION_COMPLETE.md
+QUICK_START_CONTEXT_RETRIEVER.md
+RDI_SIMULATION_GUIDE.md
+REDIS_IRIS_SETUP.md
+
+# Context Retriever CLI artifacts (not used - using UI-created Surface)
+context-retriever/
+
+# Temporary Kaiden folder
+.kaiden/

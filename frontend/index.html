@@ -3,16 +3,17 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Redis Agent Memory with LangGraph</title>
-    <link rel="stylesheet" href="/styles.css?v=session-actions-topbar" />
+    <title>AI Travel Agent - Powered by Redis Iris</title>
+    <link rel="stylesheet" href="/styles.css?v=tools-in-sidebar" />
   </head>
   <body>
     <main class="app-shell">
       <section class="chat-pane">
         <header class="topbar">
           <div>
-            <p class="eyebrow">Redis Agent Memory</p>
-            <h1>LangGraph Travel Agent</h1>
+            <p class="eyebrow">LangGraph Travel Agent</p>
+            <h1>AI Travel Concierge</h1>
+            <p class="subtitle">Powered by Redis Iris • Agent Memory • LangCache • Context Retriever</p>
           </div>
           <div class="session-chip">
             <div class="session-copy">
@@ -58,6 +59,28 @@
           </ul>
         </section>
 
+        <section class="memory-section cache-section">
+          <div class="section-heading">
+            <span>Cache</span>
+            <h2>LangCache Status</h2>
+          </div>
+          <div id="cacheStatus" class="cache-status">
+            <div class="cache-indicator cache-miss">
+              <span class="cache-label">No cache data yet</span>
+            </div>
+          </div>
+        </section>
+
+        <section class="memory-section tools-section">
+          <div class="section-heading">
+            <span>🔧 Tools</span>
+            <h2>Context Retriever</h2>
+          </div>
+          <div id="toolsList" class="tools-list empty">
+            <div class="tool-placeholder">No tools called yet</div>
+          </div>
+        </section>
+
         <section class="memory-section">
           <div class="section-heading">
             <span>LTM</span>
@@ -80,6 +103,6 @@
       </aside>
     </main>
 
-    <script src="/app.js?v=session-actions-topbar"></script>
+    <script src="/app.js?v=tools-in-sidebar"></script>
   </body>
 </html>

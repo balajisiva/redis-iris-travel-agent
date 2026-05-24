@@ -1,201 +1,268 @@
-# Redis Agent Memory with LangGraph Demo
+# Redis Iris Travel Agent
 
-## Overview
+A LangGraph travel-concierge agent built to evaluate [Redis Iris](https://redis.io/iris/) — wiring up Agent Memory, LangCache, and Context Retriever into one production-style pipeline, with every layer surfaced as a live panel so you can watch it work.
 
-This demo demonstrates how [Redis Agent Memory](https://pypi.org/project/redis-agent-memory/) can add memory to a LangGraph agent. Built with Python, LangGraph, OpenAI, and the `redis-agent-memory` Python client, it shows how an agent can use session-scoped short-term memory for the current conversation and durable long-term memory for user facts and preferences across sessions.
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Python 3.12+](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/downloads/)
 
-The demo runs as a lightweight web app. You chat with the agent, observe how session memory and long-term memory are stored and retrieved, inspect data using Redis Insight when useful, start a fresh session from the session chip, and then ask follow-up questions that rely on durable long-term memory.
+> **Background:** I wrote up what I found building this — what a production agent actually needs, and how Iris held up over a weekend. [Read the post →](REPLACE_WITH_BLOG_URL)
 
-## Table of Contents
+---
 
-- [Demo Objectives](#demo-objectives)
-- [Setup](#setup)
-- [Running the Demo](#running-the-demo)
-- [Architecture](#architecture)
-- [Running the Tests](#running-the-tests)
-- [Known Issues](#known-issues)
-- [Resources](#resources)
-- [Maintainers](#maintainers)
-- [License](#license)
+## What this is
 
-## Demo Objectives
+A production agent needs four things that have nothing to do with the model: memory within a session, memory across sessions, real and fresh data, and cost control. You normally build and maintain all four yourself.
 
-- Demonstrate Redis as a memory persistence layer for agentic applications.
-- Show how to integrate Redis Agent Memory through the Python client.
-- Illustrate the LangGraph pattern of retrieving short-term and long-term memory before an LLM call.
-- Show the difference between session-scoped short-term memory and durable long-term memory.
-- Keep current conversation details in short-term memory while extracting only durable facts and preferences into long-term memory.
-- Provide a simple way to verify your Redis Agent Memory service endpoint.
+This project tests whether Redis Iris can handle them as services instead. It uses a travel concierge as the example domain, but the patterns are domain-agnostic — adapt them to customer support, e-commerce, documentation assistants, or any agent.
 
-## Setup
+It started from Redis's official [redis-agent-memory-with-langgraph-demo](https://github.com/redis-developer/redis-agent-memory-with-langgraph-demo), which demonstrates **Agent Memory** only. This extends that foundation with **LangCache**, **Context Retriever**, a real PostgreSQL data layer, and a UI that shows all the layers at once.
 
-### Dependencies
+### Iris components used
 
-- [Docker](https://docs.docker.com/get-docker/) for running the web UI
-- [Redis Agent Memory](https://pypi.org/project/redis-agent-memory/)
-- [Redis Insight](https://redis.io/insight/) for optional memory inspection
-- [OpenAI API key](https://platform.openai.com/api-keys)
+- 🧠 **Agent Memory** — session memory (STM) and cross-session long-term memory (LTM)
+- ⚡ **LangCache** — semantic response caching with a configurable similarity threshold
+- 🔧 **Context Retriever** — 15 MCP tools auto-generated from the data schema, no API code
+- 🔄 **RDI** — Redis Data Integration for database→Redis sync. RDI is still in preview and not generally available (you contact Redis to evaluate it), so this repo uses a small stand-in sync script in its place.
 
-### Account Requirements
+---
 
-| Account                                          | Description                                                    |
-|:-------------------------------------------------|:---------------------------------------------------------------|
-| [OpenAI](https://auth.openai.com/create-account) | LLM used to generate assistant responses and extract memories. |
-| [Redis Agent Memory](https://redis.io/try-free)  | Fully managed service for agent memory backed by Redis Cloud.  |
+## Quick Start
 
-This demo does not deploy Redis Agent Memory. Before running the demo, make sure you have an Agent Memory Server data-plane URL, store ID, and API key.
+### Prerequisites
 
-### Configuration
+- Docker & Docker Compose
+- A Redis Cloud account ([free tier available](https://redis.io/cloud))
+- An OpenAI API key (or compatible LLM provider)
 
-#### Setup
+### 1. Clone and set up
 
-1. Clone the repository:
+```bash
+git clone https://github.com/balajisiva/redis-iris-travel-agent
+cd redis-iris-travel-agent
 
-   ```sh
-   git clone <repository-url>
-   cd redis-agent-memory-with-langgraph-demo
-   ```
+cp .env.example .env
+```
 
-2. Create your environment file:
+### 2. Configure Iris services
 
-   ```sh
-   cp .env.example .env
-   ```
+In [Redis Cloud](https://redis.io/cloud), create an Agent Memory store, a LangCache instance, and a Context Retriever Surface, then fill in `.env`:
 
-3. Edit `.env` with your configuration:
+```bash
+# Agent Memory
+AGENT_MEMORY_SERVER_URL=https://<region>.memory.redis.io
+AGENT_MEMORY_STORE_ID=your-store-id
+AGENT_MEMORY_API_KEY=your-api-key
 
-| Variable                    | Required | Description                                                   |
-|:----------------------------|:--------:|:--------------------------------------------------------------|
-| `OPENAI_API_KEY`            | Yes      | API key used by the LangGraph agent.                          |
-| `AGENT_MEMORY_SERVER_URL`   | Yes      | Agent Memory Server data-plane base URL.                      |
-| `AGENT_MEMORY_STORE_ID`     | Yes      | Store ID used by the Agent Memory Server API.                 |
-| `AGENT_MEMORY_API_KEY`      | Yes      | API key used by the Agent Memory Server API.                  |
-| `OPENAI_MODEL`              | No       | OpenAI model used for responses and memory extraction.        |
-| `DEMO_OWNER_ID`             | No       | Stable user identifier for long-term memories.                |
-| `DEMO_NAMESPACE`            | No       | Logical namespace for this demo's memories.                   |
-| `DEMO_AGENT_ID`             | No       | Actor ID used when writing assistant session events.          |
+# LangCache
+LANGCACHE_SERVER_URL=https://<region>.langcache.redis.io
+LANGCACHE_CACHE_ID=your-cache-id
+LANGCACHE_API_KEY=your-api-key
 
-4. Build and run the app:
+# Context Retriever
+CONTEXT_RETRIEVER_AGENT_KEY=your-agent-key
 
-   ```sh
-   docker compose up --build
-   ```
-   
-## Running the Demo
+# LLM provider
+OPENAI_API_KEY=your-openai-key
+OPENAI_MODEL=gpt-4-turbo-preview
+```
 
-Open `http://localhost:8080`.
+### 3. Run it
 
-The web UI shows the short-term memory loaded for the current session, the relevant long-term memories retrieved for the current request, and any accepted newly extracted long-term memories.
+```bash
+docker-compose up -d
 
-### Memory Model
+# Sync sample data into Redis (stand-in for RDI)
+docker-compose exec backend python scripts/simulate_rdi.py
 
-The demo intentionally separates two memory scopes:
+# Run the demo flow
+./demo_flow.sh
 
-| Memory scope            | Backed by Redis Agent Memory | Used for                                                    |
-|:------------------------|:-----------------------------|:------------------------------------------------------------|
-| Short-term memory (STM) | Session memory               | Current conversation context, active itinerary details, and follow-up continuity. |
-| Long-term memory (LTM)  | Long-term memory             | Durable user facts, persistent preferences, and stable constraints. |
+# Or open the web UI
+open http://localhost:8080
+```
 
-Current trip details such as dates, destinations, and booking requests stay in short-term memory unless the user explicitly asks the agent to remember them for later. Durable details such as a user's name or recurring travel preferences can be extracted into long-term memory. Before writing and displaying newly extracted long-term memory, the backend filters out memories that already appeared in the retrieved long-term memory list.
+> **Note on a cold start:** on a fresh setup, the semantic cache hit and cross-session memory retrieval may not register on the first pass — the indexes need a few writes before they're queryable. Run the flow a couple of times to warm them and both fire reliably.
 
-### Examples of Interactions
-
-- "My name is Ricardo."
-- "Remember that I prefer flying Delta."
-- "I like vegetarian restaurants, but I do not like cilantro."
-- "I am planning a trip to Lisbon next month."
-- "Fresh session: what do you remember about me?"
-- "Can you recommend a dinner plan for Lisbon?"
-
-### UI Actions
-
-- **+** in the session chip starts a fresh short-term memory session while keeping the same long-term memory owner.
-- **×** in the session chip deletes short-term memory for the current session while keeping long-term memory intact.
-
-### Web UI
-
-The web UI keeps the frontend deliberately small: Nginx serves static HTML, CSS, and JavaScript, while FastAPI handles `/api/*` requests.
-
-![web-ui-sample.png](images/web-ui-sample.png)
-
-The frontend shows the chat, current session ID, short-term memory loaded for the current session, relevant long-term memories retrieved for the latest turn, and accepted new durable memories extracted from the latest user message. Session controls live in the session chip so the memory panels stay focused on STM, retrieved LTM, and newly extracted LTM. The UI uses a Redis-red accent for the primary actions and memory labels.
-
-### Backend
-
-The backend exposes:
-
-| Endpoint                           | Purpose                                      |
-|:-----------------------------------|:---------------------------------------------|
-| `POST /api/sessions`               | Start a new session.                         |
-| `POST /api/chat`                   | Run one agent turn.                          |
-| `GET /api/sessions/{id}/memory`    | Read current session short-term memory.      |
-| `DELETE /api/sessions/{id}/memory` | Delete current session short-term memory.    |
-| `GET /api/health`                  | Backend liveness check.                      |
-| `GET /api/ready`                   | Backend readiness check, including Redis Agent Memory. |
-
-### Suggested Demo Flow
-
-1. Start the demo with `docker compose up --build`.
-2. Ask for help with a multi-turn travel request and notice the session context appearing as short-term memory.
-3. Tell the agent a durable fact or recurring preference.
-4. Inspect Redis Insight to show session events and newly extracted long-term memory.
-5. Click **+** in the session chip to start a fresh short-term memory session.
-6. Ask the agent a question that relies on durable long-term memory.
-7. Click **×** in the session chip to delete the current session memory without deleting durable long-term memory.
-8. Inspect Redis Insight again to show the memory being reused.
+---
 
 ## Architecture
 
-The demo uses LangGraph to model one agent turn as a small graph while Redis Agent Memory provides both session-scoped short-term memory and durable long-term memory:
-
-1. Retrieve the current session memory from Redis Agent Memory as short-term memory.
-2. Retrieve relevant long-term memories from Redis Agent Memory.
-3. Inject both memory contexts into the OpenAI system prompt.
-4. Generate the assistant response.
-5. Write the user and assistant messages as session events.
-6. Extract candidate durable facts and preferences from the turn.
-7. Filter out candidates that duplicate long-term memories already retrieved for the request.
-8. Write accepted new long-term memories back to Redis Agent Memory.
-
-![Redis Agent Memory with LangGraph architecture](images/architecture-diagram.png)
-
-## Running the Tests
-
-The test suite requires no external services: no Redis connection, no OpenAI key. All network calls are mocked.
-
-Install the test dependencies and run pytest:
-
-```sh
-uv add --dev pytest httpx
-uv run pytest
+```
+User Query
+    ↓
+LangGraph Agent (orchestration)
+    ↓
+┌─────────────────────────────────────────────────────────────┐
+│ Redis Iris                                                   │
+├─────────────────────────────────────────────────────────────┤
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐       │
+│  │ Agent Memory │  │  LangCache   │  │   Context    │       │
+│  │              │  │              │  │  Retriever   │       │
+│  │ • STM / LTM  │  │ • Check /    │  │ • Search /   │       │
+│  │   retrieve   │  │   save       │  │   filter     │       │
+│  │ • Store new  │  │   responses  │  │   data       │       │
+│  └──────────────┘  └──────────────┘  └──────────────┘       │
+│         ↑                                     ↑              │
+│         │          ┌──────────────┐          │              │
+│         └──────────│ RDI stand-in │──────────┘              │
+│                    │ PostgreSQL → │                         │
+│                    │    Redis     │                         │
+│                    └──────────────┘                         │
+└─────────────────────────────────────────────────────────────┘
+    ↓
+Personalized Response
 ```
 
-The tests are organized into three files under `tests/`:
+**Data flow:**
+1. User sends a query.
+2. **Agent Memory** retrieves session history (STM) and stored preferences (LTM).
+3. **LangCache** checks for a semantically similar cached response.
+4. On a miss, **Context Retriever** fetches real data via auto-generated MCP tools.
+5. The LLM generates a response using memory context and retrieved data.
+6. **Agent Memory** stores the new turn and any extracted facts.
+7. **LangCache** caches the response for future similar queries.
 
-- `test_utils.py` — pure utility functions (no mocking required)
-- `test_api.py` — all FastAPI endpoints via `TestClient`
-- `test_service.py` — `RedisAgentMemoryService` methods, including the LTM deduplication logic
+---
 
-## Known Issues
+## Features
 
-- The demo requires a reachable Agent Memory Server data-plane endpoint.
-- Memory extraction is performed by the LLM, so phrasing can vary between runs.
-- The demo uses Redis Agent Memory session APIs for short-term memory, not LangGraph's native checkpointer interface.
-- Re-running the same durable fact may create the same deterministic memory ID and depend on server-side idempotency behavior if the existing memory was not retrieved for that request.
-- Redis Insight inspection depends on how your Agent Memory Server stores data internally.
+### 🧠 Agent Memory
+
+Short-term memory holds conversation history within a session. Long-term memory extracts durable facts (preferences, constraints, personal details) and retrieves them across sessions via semantic search.
+
+```
+Session 1 → User: "I prefer luxury hotels with spa facilities"
+          → Stored to LTM
+
+Session 2 → User: "Recommend hotels in Barcelona"
+          → LTM retrieved, response prioritizes luxury + spa
+```
+
+### ⚡ LangCache
+
+Caches LLM responses by embedding and matches new queries semantically, not by exact string. A configurable similarity threshold trades correctness risk against hit rate.
+
+```
+"What are the best hotels in Paris?"  → miss, generated, cached
+"Top places to stay in Paris?"        → hit, served from cache, no LLM call
+```
+
+Cache savings depend entirely on hit rate, which is a property of your traffic, not the product — a long tail of unique questions might sit at 10–20%, while a repetitive support workload could reach 80%. Measure your own before relying on a number.
+
+### 🔧 Context Retriever
+
+Point it at your Redis data, run auto-detect, and it generates a set of typed MCP tools — no API code. For this demo's five entities it produced **15 tools**: a `filter`, `get`, and `search` for each.
+
+```
+filter_hotel_by_destination_id   get_hotel_by_id   search_hotel_by_text
+filter_activity_by_destination_id ...
+```
+
+Tool names follow an `operation_entity_by_field` pattern, so list the generated set and bind to what's actually there:
+
+```python
+tools = requests.post(mcp_url, json={"jsonrpc":"2.0","method":"tools/list","id":1},
+                      headers=headers).json()["result"]["tools"]
+```
+
+Tools are generated *from* the entity model — there's no documented way to author or customize an individual tool, which is fine for this demo but something a real app may eventually need.
+
+### 🔄 RDI (stand-in)
+
+RDI uses change data capture to sync a source database into Redis continuously. It's still in preview and not generally available, so this repo stands in with `scripts/simulate_rdi.py`, which reads from PostgreSQL and writes JSON documents into Redis to produce the same end shape Context Retriever reads from. It is **not** a re-implementation of RDI's CDC — just enough to give the pipeline fresh data. Swap it for real RDI once you have access.
+
+Sample data: hotels (8), destinations (8), activities (9), restaurants (9), plus a user-preferences table.
+
+---
+
+## Project Structure
+
+```
+.
+├── backend/
+│   ├── app.py                 # FastAPI server
+│   ├── memory.py              # LangGraph agent with Iris integration
+│   └── context_retriever.py   # MCP client for Context Retriever
+├── frontend/                  # Web UI with live layer panels
+├── database/
+│   ├── schema.sql             # PostgreSQL schema
+│   └── seed_data.sql          # Sample data
+├── scripts/
+│   ├── simulate_rdi.py        # RDI stand-in (PostgreSQL → Redis)
+│   └── check_iris_services.py # Service health check
+├── demo_flow.sh               # Full demo (colorful output)
+├── demo_flow_simple.sh        # Simple demo (JSON output)
+├── docker-compose.yml
+├── .env.example
+├── DEMO_SCRIPTS.md
+├── TEST_FULL_DEMO.md
+└── README.md
+```
+
+---
+
+## Demo Flow
+
+`./demo_flow.sh` runs the full sequence:
+
+**Session 1** — set preferences (LTM extraction), first query (cache miss), similar query (semantic cache hit).
+**Session 2** — cross-session memory retrieval, then a tool call returning real Barcelona hotels via Context Retriever.
+
+`./demo_flow_simple.sh` runs the same flow with JSON-only output, useful for screenshots. See `DEMO_SCRIPTS.md` for details.
+
+---
+
+## Adapting to Your Domain
+
+The Iris integration stays the same; only the data and intent detection change.
+
+1. **Change the data** — update `database/schema.sql` and `database/seed_data.sql` for your domain.
+2. **Update the Context Retriever Surface** — sync your data, create a Surface in Redis Cloud, run auto-detect, update `CONTEXT_RETRIEVER_AGENT_KEY`.
+3. **Update intent detection** in `backend/context_retriever.py`.
+4. **Update the system prompt** in `backend/memory.py`.
+
+---
+
+## Configuration
+
+**LLM provider** — OpenAI by default; set `OPENAI_API_BASE` for a local OpenAI-compatible model, or edit `backend/memory.py` for other providers.
+
+**Cache sensitivity** — `LANGCACHE_DISTANCE_THRESHOLD` in `.env` (lower = looser matching, more hits, higher correctness risk).
+
+**Response format** — adjust the system prompt in `backend/memory.py`.
+
+---
+
+## Troubleshooting
+
+**Cache or memory not firing on a fresh setup** — indexes need a few writes before they're queryable. Send the same query 2–3 times; subsequent runs hit reliably.
+
+**Tool calls return 0 results** — confirm the sync script ran, data exists in Redis, and the Context Retriever Surface is configured in Redis Cloud.
+
+**STM shows "No short-term memory yet"** — normal for the first message in a session.
+
+---
+
+## Credits
+
+**Built by:** Balaji Sivasubramanian ([@balajisiva](https://github.com/balajisiva))
+
+**Based on:** Redis's [redis-agent-memory-with-langgraph-demo](https://github.com/redis-developer/redis-agent-memory-with-langgraph-demo), which provided the Agent Memory + LangGraph foundation. This repo extends it with LangCache, Context Retriever, a PostgreSQL data layer, an RDI stand-in, and a live-panel UI.
+
+**Built with:** [LangGraph](https://langchain-ai.github.io/langgraph/), [Redis Iris](https://redis.io/iris/), [PostgreSQL](https://www.postgresql.org/), [FastAPI](https://fastapi.tiangolo.com/), and [Docker](https://www.docker.com/).
+
+---
 
 ## Resources
 
-- [Redis Agent Memory](https://pypi.org/project/redis-agent-memory/)
-- [LangGraph documentation](https://langchain-ai.github.io/langgraph/)
-- [OpenAI API documentation](https://platform.openai.com/docs)
-- [Redis Insight](https://redis.io/insight/)
+- Redis Iris: [redis.io/iris](https://redis.io/iris/)
+- Agent Memory: [redis.io/agent-memory](https://redis.io/agent-memory/)
+- LangCache: [redis.io/langcache](https://redis.io/langcache/)
+- Context Retriever: [redis.io/context-retriever](https://redis.io/context-retriever/)
+- LangGraph: [langchain-ai.github.io/langgraph](https://langchain-ai.github.io/langgraph/)
 
-## Maintainers
-
-**Maintainers:**
-- Ricardo Ferreira — [@riferrei](https://github.com/riferrei)
+---
 
 ## License
 
-This project is licensed under the MIT License.
+MIT — see [LICENSE](LICENSE).

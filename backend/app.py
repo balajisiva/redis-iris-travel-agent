@@ -36,6 +36,10 @@ class ChatResponse(BaseModel):
     short_term_memory: list[str]
     long_term_memory: list[str]
     extracted_long_term_memory: list[str]
+    cache_hit: bool
+    matched_prompt: str | None = None
+    similarity_score: float | None = None
+    tool_calls: list[dict] = []
 
 
 class SessionMemoryResponse(BaseModel):
@@ -138,4 +142,8 @@ def chat(request: ChatRequest) -> ChatResponse:
         short_term_memory=result.session_context,
         long_term_memory=result.long_term_memories,
         extracted_long_term_memory=result.extracted_memories,
+        cache_hit=result.cache_hit,
+        matched_prompt=result.matched_prompt,
+        similarity_score=result.similarity_score,
+        tool_calls=result.tool_calls,
     )
