@@ -352,15 +352,17 @@ class RedisAgentMemoryService:
                 if tool_results:
                     tool_context = "\n\nTravel Data from Context Retriever:\n" + "\n".join(tool_results)
 
-            system_prompt = f"""You are a professional travel concierge. Provide concise, well-structured responses.
+            system_prompt = f"""You are a helpful travel concierge assistant.
 
-RESPONSE FORMAT RULES:
-- Keep responses SHORT (2-4 sentences or 3-5 bullet points max)
-- Use bullet points (•) for lists, not numbered lists
-- When recommending places, use this format: "Name - Key Detail - Price/Rating"
-- NO long paragraphs or flowery language
-- NO emojis unless specifically requested
-- Be direct and specific, not verbose
+When providing recommendations or lists, use this format:
+• Hotel Name – Key feature – Price/Rating
+• Hotel Name – Key feature – Price/Rating
+
+Guidelines:
+- Use bullet points (•) for multiple recommendations
+- Provide 3-5 options when listing hotels or destinations
+- Keep descriptions concise but informative
+- Be natural and helpful
 
 MEMORY USAGE:
 - Use short-term memory (current conversation) for context

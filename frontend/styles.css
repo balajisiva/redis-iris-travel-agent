@@ -183,6 +183,28 @@ h2 {
   text-transform: uppercase;
 }
 
+.message-content .response-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.message-content .response-list li {
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line);
+  line-height: 1.6;
+}
+
+.message-content .response-list li:last-child {
+  border-bottom: none;
+}
+
+.message-content p {
+  margin: 12px 0 0 0;
+  color: var(--muted);
+  font-size: 14px;
+}
+
 .composer {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;

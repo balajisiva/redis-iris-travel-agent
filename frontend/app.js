@@ -34,9 +34,38 @@ function setSession(sessionId) {
 function appendMessage(role, label, text) {
   const node = document.createElement("article");
   node.className = `message ${role}`;
-  node.innerHTML = `<span class="message-label"></span><div></div>`;
+  node.innerHTML = `<span class="message-label"></span><div class="message-content"></div>`;
   node.querySelector(".message-label").textContent = label;
-  node.querySelector("div").textContent = text;
+
+  const contentDiv = node.querySelector(".message-content");
+
+  // Render bullet points as HTML list for better formatting
+  if (text.includes('•')) {
+    const lines = text.split('\n').map(line => line.trim()).filter(line => line);
+    const bulletItems = lines.filter(line => line.startsWith('•'));
+    const otherText = lines.filter(line => !line.startsWith('•')).join(' ');
+
+    if (bulletItems.length > 0) {
+      const ul = document.createElement('ul');
+      ul.className = 'response-list';
+      bulletItems.forEach(item => {
+        const li = document.createElement('li');
+        li.textContent = item.replace(/^•\s*/, '');
+        ul.appendChild(li);
+      });
+      contentDiv.appendChild(ul);
+      if (otherText) {
+        const p = document.createElement('p');
+        p.textContent = otherText;
+        contentDiv.appendChild(p);
+      }
+    } else {
+      contentDiv.textContent = text;
+    }
+  } else {
+    contentDiv.textContent = text;
+  }
+
   els.messages.append(node);
   els.messages.scrollTop = els.messages.scrollHeight;
 }
