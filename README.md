@@ -24,6 +24,8 @@ It started from Redis's official [redis-agent-memory-with-langgraph-demo](https:
 - 🔧 **Context Retriever** — 15 MCP tools auto-generated from the data schema, no API code
 - 🔄 **RDI** — Redis Data Integration for database→Redis sync. RDI is still in preview and not generally available (you contact Redis to evaluate it), so this repo uses a small stand-in sync script in its place.
 
+![Travel Agent with Redis Iris](images/Travel-agent-with-redis-iris.png)
+
 ---
 
 ## Quick Start
