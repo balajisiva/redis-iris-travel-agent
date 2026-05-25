@@ -5,7 +5,7 @@ A LangGraph travel-concierge agent built to evaluate [Redis Iris](https://redis.
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.12+](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/downloads/)
 
-> **Background:** I wrote up what I found building this — what a production agent actually needs, and how Iris held up over a weekend. [Read the post →]([(https://medium.com/@balajiwharton/agents-need-memory-fresh-data-and-a-cache-to-survive-production-d387da94e1ca?source=friends_link&sk=4bbac0229bec02243114249ddc93f087)L])
+> **Background:** I wrote up what I found building this — what a production agent actually needs, and how Iris held up over a weekend. [Read the post →]([https://medium.com/@balajiwharton/agents-need-memory-fresh-data-and-a-cache-to-survive-production-d387da94e1ca?source=friends_link&sk=4bbac0229bec02243114249ddc93f087])
 
 ---
 
